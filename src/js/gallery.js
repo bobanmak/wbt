@@ -110,7 +110,7 @@ App.ModuleManager.extend("Gallery", //registriet Modul in framework.js
                 newObject.carousel();
 
                 // add it to the global module register
-                App.ModuleManager.registerPreparedModule(oobjectID,{id: objectID, parentArticle: parentArticle.attr("id"), selector: newObject, isValidator: thisHelper.isValidator, validate: thisHelper.isValidator ? thisHelper.validator : null, finished: false});
+                App.ModuleManager.registerPreparedModule(objectID,{id: objectID, parentArticle: parentArticle.attr("id"), selector: newObject, isValidator: thisHelper.isValidator, validate: thisHelper.isValidator ? thisHelper.validator : null, finished: false});
 
             });
 

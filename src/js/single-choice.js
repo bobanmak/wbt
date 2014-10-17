@@ -10,8 +10,8 @@
     <p data-correct="1">Antwort 1</p>
     <p data-correct="0">Antwort 2</p>
     <p data-correct="0">Antwort 3</p>
-    <p data-correct="1">Antwort 4</p>
-    <p data-correct="1">Antwort 5</p>
+    <p data-correct="=">Antwort 4</p>
+    <p data-correct="=">Antwort 5</p>
 	</div>
 	<<<<<<<<<<<<<<<<<<<<<<<<<
 	<div class="checkbox" data-correct="0"><label for=""><input type="checkbox"></label></div>
@@ -26,9 +26,10 @@
  * MODULE WRAPPER CLASS
  * multiple-choice
  */
-App.ModuleManager.extend("MultipleChoice",
+
+App.ModuleManager.extend("SingleChoice",
     {
-        wrapperClass : "multiple-choice",
+        wrapperClass : "single-choice",
 
         isValidator : true,
 
@@ -59,7 +60,7 @@ App.ModuleManager.extend("MultipleChoice",
                 }
 
                 if(!App.Helper.hasAttribute(thisObject,"data-question")){
-                    throw new Error("The multiple choice container must have a data-question attribute!");
+                    throw new Error("The single container must have a data-question attribute!");
                 }
 
                 // find the parent article object
@@ -67,6 +68,12 @@ App.ModuleManager.extend("MultipleChoice",
 
                 if(parentArticle.length != 1){
                     throw new Error("Malformed article / module structure! The module must be a direct child of an article element!");
+                }
+
+                // check if there are more than one fields with data-correct=1
+                var dataCorrectFields = thisObject.find("p[data-correct=1]");
+                if(dataCorrectFields.length != 1){
+                    throw new Error("The single choice module must have exactly one correct answer field!");
                 }
 
                 // generates a unique id for this module
@@ -83,12 +90,12 @@ App.ModuleManager.extend("MultipleChoice",
 
                     // check if the data-correct attribute exists, if not, throw an exception and cancel building process
                     if(!App.Helper.hasAttribute(currentContentObject,"data-correct")){
-                        throw new Error("Malformed content!\nP tags in multiple-choice must contain a data-correct attribute!");
+                        throw new Error("Malformed content!\nP tags in single-choice must contain a data-correct attribute!");
                     }
 
                 
                     // add elents to arrayShuffle
-                    arrayShuffle.push('<div class="checkbox" data-correct="'+currentContentObject.attr("data-correct")+'"><label><input type="checkbox" />'+currentContentObject.html()+'</label></div>');
+                    arrayShuffle.push('<div class="radio" data-correct="'+currentContentObject.attr("data-correct")+'"><label><input type="radio" name=\"'+objectID+'\"/>'+currentContentObject.html()+'</label></div>');
 					
                 });
 				// shuffle the content of arrayShuffle and combine them afterwards
@@ -100,7 +107,6 @@ App.ModuleManager.extend("MultipleChoice",
                 // get the jQoury object for later purposes
                 var newObject = $("#"+objectID);
 
-
                 // add it to the global module register
                 App.ModuleManager.registerPreparedModule(objectID,{id: objectID, parentArticle: parentArticle.attr("id"), selector: newObject, isValidator: thisHelper.isValidator, validate: thisHelper.isValidator ? thisHelper.validator : null, finished: false});
 
@@ -109,7 +115,7 @@ App.ModuleManager.extend("MultipleChoice",
         },
 
         validator : function(myModule){
-            var allObjects = myModule.selector.find("div.checkbox");
+            var allObjects = myModule.selector.find("div.radio");
             
             var result = true;
 
@@ -118,9 +124,9 @@ App.ModuleManager.extend("MultipleChoice",
             allObjects.each(function(){
                 var thisObject = $(this);
 
-                var isCorrect = parseInt(thisObject .attr("data-correct"),10) == 1;
+                var isCorrect = parseInt(thisObject.attr("data-correct"),10) == 1;
 
-                var checked = thisObject.find("input[type=checkbox]").is(':checked');
+                var checked = thisObject.find("input[type=radio]").is(':checked');
 
                 if((isCorrect && checked) || (!isCorrect && !checked)){
                     thisObject.append("<span class=\"glyphicon glyphicon-ok text-success pull-right\"></span>");

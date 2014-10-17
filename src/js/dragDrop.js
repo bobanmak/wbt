@@ -54,6 +54,8 @@ App.ModuleManager.extend("DragDrop", //registriet Modul in framework.js
     {
         wrapperClass : "dragDrop",
 
+        isValidator : true,
+
         wrapperFunction : function(section){
             // check if there are modules of this module type in the current given section
             // stop this function if not
@@ -126,7 +128,7 @@ App.ModuleManager.extend("DragDrop", //registriet Modul in framework.js
                             answers.push(tmpHTML);
 					   } else {
         					//2. DIV anlegen; solutions
-        					tmpHTML = '<li><div id="'+objectID+'" class="snapTarget_'+objectID+' dragIntoBox col-md-5 col-sd-5 col-lg-5"></div><div class="col-md-6 col-sd-6 col-lg-6">'+thisChild.html()+'</div></li>';
+        					tmpHTML = '<li><div id="'+tmpID+'" class="snapTarget_'+objectID+' dragIntoBox col-md-5 col-sd-5 col-lg-5"></div><div class="col-md-6 col-sd-6 col-lg-6">'+thisChild.html()+'</div></li>';
         					
         					//2. DIV in Array objects einfügen
         					objects.push(tmpHTML);
@@ -149,14 +151,48 @@ App.ModuleManager.extend("DragDrop", //registriet Modul in framework.js
 				
 				//"Leben einhauchen" // 
 				//finde alle Divs mit Klasse snapable, mache sie ziehbar und snapbar an die DIVs mit der Klasse snapTarget.
-				newObject.find(".snapable_"+objectID).draggable({snap: ".snapTarget_"+objectID, revert: "invalid"});
-				newObject.find(".snapTarget_"+objectID).droppable({accept: ".snapable_"+objectID});
+				newObject.find(".snapable_"+objectID).draggable({
+                    snap: ".snapTarget_"+objectID,
+                    snapMode: "inner",
+                    revert: "invalid"
+                });
+				newObject.find(".snapTarget_"+objectID).droppable({
+                    accept: ".snapable_"+objectID,
+                    drop : function(event, ui){
+                        var t = $(this);
+
+
+                        //ui.draggable.animate({width:t.width(), height: t.height(), left: t.css("left"), top: t.css("top")});
+                        // get the data-target attribute of this element
+                        var target = ui.draggable.attr("data-target");
+                        t.attr("data-current-dropped",target);
+                    },
+                    out : function(event, ui) {
+                        $(this).attr("data-current-dropped",null);
+                    }
+                });
 
                 // add it to the global module register
                 App.ModuleManager.registerPreparedModule(objectID,{id: objectID, parentArticle: parentArticle.attr("id"), selector: newObject, isValidator: thisHelper.isValidator, validate: thisHelper.isValidator ? thisHelper.validator : null, finished: false});
 
             });
 
+        },
+
+        validator : function(myModule){
+            // find all snap targets
+            var snapTargets = myModule.selector.find(".snapTarget_"+myModule.id);
+
+            var validationResult = true;
+            snapTargets.each(function(){
+
+                var t = $(this);
+
+                validationResult = validationResult && (t.attr("data-current-dropped") === t.attr("id"));
+
+            });
+
+            return validationResult;
         }
     }
 );

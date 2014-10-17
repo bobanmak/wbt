@@ -82,6 +82,8 @@ App.ModuleManager.extend("Value", //registriet Modul in framework.js
 
             containerObject.find(".indicator").remove();
 
+            if((allObjects.val()).length == 0) return false;
+
             var isCorrect = allObjects.attr("data-value") == allObjects.val();
 
             containerObject.append("<div class=\"input-group-addon indicator\"><span class=\"glyphicon "+(isCorrect ? "glyphicon-ok text-success" : "glyphicon-remove text-danger")+"\"></span></div>");

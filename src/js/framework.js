@@ -249,6 +249,10 @@ App.SectionManager = {
      */
     articles : {},
 
+    /**
+     * indicates if the showArticle functions runs for the first time. This needs a special behaviour of this function
+     * @type {Boolean}
+     */
     firstRun : true,
 
    
@@ -370,12 +374,12 @@ App.SectionManager = {
                 var id;
                 if(i > 0){
                     id = articleArray[i-1];
-                    row.append("<a href=\"#walk\" data-id=\""+id+"\" class=\"btn btn-default pull-left walkingButton\" role=\"button\">Zurück</a>");
+                    row.append("<a href=\"#walk\" data-id=\""+id+"\" class=\"btn btn-default pull-left walkingButton\" role=\"button\">"+App.Lang.PREV_BUTTON+"</a>");
                 }
 
                 if(i < len){
                     id = (i < len - 1) ? articleArray[i + 1] : this.sections[section].id;
-                    row.append("<a href=\"#"+(i == len - 1 ? "finish" : "walk")+"\" data-id=\""+id+"\" class=\"btn btn-primary pull-right walkingButton\" role=\"button\">"+(i == len - 1 ? "Abschließen" : "Weiter")+"</a>");
+                    row.append("<a href=\"#"+(i == len - 1 ? "finish" : "walk")+"\" data-id=\""+id+"\" class=\"btn btn-primary pull-right walkingButton\" role=\"button\">"+(i == len - 1 ? App.Lang.FINISH_BUTTON : App.Lang.NEXT_BUTTON)+"</a>");
                 }
 
                 this.articles[articleArray[i]].selector.append(row);
@@ -407,25 +411,34 @@ App.SectionManager = {
 
         var arg, canProceed = true;
 
+        // skip calling validation functions of modules in the first function call
         if(!this.firstRun){
             
-            if(this.currentSection === parentSection.id){
-                // validate if we have any validator modules in this article
-                for(var i = 0, modules = this.articles[this.currentArticle].modules, validatorResult = false; i < modules.length; i++){
-                    var currentModule = App.ModuleManager.registeredModules[modules[i]];
-                    if(currentModule.isValidator && !currentModule.finished){
-                        validatorResult = currentModule.validate(currentModule)
-                        canProceed = canProceed && validatorResult;
+            // is the target a previous one?
+            // if true, skip validation of modules
 
-                        currentModule.finished = validatorResult;
-                    } else {
-                        canProceed = canProceed && true;
+            if(this.currentSection === parentSection.id){
+                // is the target a previous one?
+                // if true, skip validation of modules
+                // 
+                if(parentSection.articleList[parentSection.articleList.indexOf(this.currentArticle) - 1] !== articleName){
+                    // validate if we have any validator modules in this article
+                    for(var i = 0, modules = this.articles[this.currentArticle].modules, validatorResult = false; i < modules.length; i++){
+                        var currentModule = App.ModuleManager.registeredModules[modules[i]];
+                        if(currentModule.isValidator && !currentModule.finished){
+                            validatorResult = currentModule.validate(currentModule)
+                            canProceed = canProceed && validatorResult;
+
+                            currentModule.finished = validatorResult;
+                        } else {
+                            canProceed = canProceed && true;
+                        }
                     }
                 }
             }
 
-            if(!canProceed && this.currentSection === parentSection.id){
-                alert("bitte alle sachen richtig machen!");
+            if(!canProceed && this.currentSection === parentSection.id && !this.currentSection.isLinear){
+                App.Helper.showModal(App.Lang.ERROR_VISIT_PREVIOUS_TITLE, "<b>"+App.Lang.ERROR_MSG_WRONG_ANSWER+"</b>", null);
                 return;
             }
         }
@@ -454,7 +467,7 @@ App.SectionManager = {
                 for(var i = 0, modules = this.articles[allArticles[nextIndex-1]].modules; i < modules.length; i++){
                     var currentModule = App.ModuleManager.registeredModules[modules[i]];
                     if(currentModule.isValidator && !currentModule.finished){
-                        alert("erst sachen davor machen!");
+                        App.Helper.showModal(App.Lang.ERROR_WRONG_ANSWER_TITLE, "<b>"+App.Lang.ERROR_MSG_WRONG_ANSWER+"</b>", null);
                         return;
                     }
                 }
@@ -562,7 +575,37 @@ App.SectionManager = {
     },
 
     finishSection : function(sectionID){
-        App.SectionManager.sections[sectionID].finished = true;
+
+        var canProceed = true;
+
+        for(var i = 0, modules = this.articles[this.currentArticle].modules, validatorResult = false; i < modules.length; i++){
+            var currentModule = App.ModuleManager.registeredModules[modules[i]];
+            if(currentModule.isValidator && !currentModule.finished){
+                validatorResult = currentModule.validate(currentModule)
+                canProceed = canProceed && validatorResult;
+
+                currentModule.finished = validatorResult;
+            } else {
+                canProceed = canProceed && true;
+            }
+        }
+
+        if(canProceed && !App.SectionManager.sections[sectionID].finished){
+            App.SectionManager.articles[App.SectionManager.currentArticle].visited = true;
+
+            var sectionFinished = true;
+            // check if we visited all articles before
+            
+            for(var i = 0, articles = App.SectionManager.sections[sectionID].articleList; i < articles.length; i++){
+                sectionFinished = sectionFinished && App.SectionManager.articles[articles[i]].visited;
+            }
+
+            if(sectionFinished){
+                App.SectionManager.sections[sectionID].finished = true;
+                App.NavigationManager.markSubNavigationAsDone();
+            }
+
+        }
     }
 
 };
@@ -645,6 +688,25 @@ App.Helper = {
                 return Math.round(Math.random());
             }
         );
+    },
+
+    showModal : function(title, content, callback){
+        var myModalID = App.Helper.generateUniqueID(),
+            myModalLabelID = App.Helper.generateUniqueID(),
+            modal = '<div class="modal fade" id="'+myModalID+'" tabindex="-1" role="dialog" aria-labelledby="'+myModalLabelID+'" aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button><h4 class="modal-title" id="'+myModalLabelID+'">'+title+'</h4></div><div class="modal-body">'+content+'</div><div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">'+App.Lang.CLOSE_BUTTON+'</button></div></div></div></div>';
+        
+        $('body').append(modal);
+        $('#'+myModalID).modal('show'); 
+
+        $('#'+myModalID).on('hidden.bs.modal', function (e) {
+        //Modal löschen
+            $(this).remove();
+            
+            //Callback-Funktion ausführen, wenn vorhanden
+            if(typeof callback === "function"){
+                callback();
+            }
+        });
     }
 
 };
@@ -905,6 +967,14 @@ App.NavigationManager = {
 
     disableSubLink : function(target){
         this.getSubNavigationElement(target).addClass("disabled");
+    },
+
+    markSubNavigationAsDone : function(){
+        if(this.hasSubNavigation){
+            this.subNavigation.find("h3").removeClass("list-group-item-info")
+                .addClass("list-group-item-success")
+                .append("<span class=\"glyphicon glyphicon-ok pull-right\"></span>");
+        }
     }
 
 
